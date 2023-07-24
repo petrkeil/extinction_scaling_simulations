@@ -1,0 +1,268 @@
+# setwd("~/Dropbox/Projects/095_OldField2022/noodling/petr/")
+
+rm(list=ls())
+
+require(deSolve)
+require(viridis)
+require(tidyverse)
+require(gridExtra)
+require(randomForest)
+require(ggplot2)
+
+system("R CMD SHLIB LVmod_metacom_log.c") # compile C code (needs Rtools)
+source("LV_misc_functions.R")
+
+################################################################################
+# SET SIMULATION PARAMETERS 
+
+params <- expand.grid(S = c(10, 100),
+                      M = c(10, 100),
+                      Amu = c(-0.9, -0.5, -0.1),
+                      d_z = seq(1, 3, by = 0.2))
+# repeat each combination of parameters rep.times
+rep.times <- 10
+params <- do.call("rbind", replicate(rep.times, params, simplify = FALSE))
+
+# set times at which the community will be sampled
+time1 = 10
+time2 = 20
+
+################################################################################
+# MAIN SIMULATION LOOP
+
+set.seed(12345)
+
+#initialize results container
+results <- list()
+
+# the loop
+for(i in 1:nrow(params))
+{
+  print(paste("Simulation",i, "out of", nrow(params)))
+  
+  n0mu = 0.01 # mean starting abundance
+  n0sd = n0mu/2 # sd starting abundance
+  Kmu = 1 # mean K
+  Ksd = 0 # sd K
+  rmu = 1 # mean r
+  rsd = 0 # sd r
+  #Amu = -0.5 # mean interaction strength
+  Amu = params$Amu[i]
+  Asd = 0.2 # sd interaction strength
+  cmu = 0 # mean dispersal rate
+  csd = 0.2 # sd dispersal rate (among species)
+  
+  minval = -999 # log(minval) is lower limit below which abundances are no longer tracked
+  # note - species only "die" in a cell if their abundance is driven to zero, but the -999 limit lets us avoid
+  # using lots of computational power to track infintesimally small abundances
+  M = params$M[i]  # number of sites
+  N0 = params$S[i] # number of species (in global pool)
+  D = N0 # dimensionality of interaction matrix
+  steps = 20 # number of simulation steps
+  
+  # make interaction matrix
+  Amat = matrix(nrow = N0, ncol = N0)
+  Amat[row(Amat)!=col(Amat)] = rnorm(N0^2-N0, Amu, Asd)
+  diag(Amat) = -1
+  
+  # store prameters in a vector
+  Pars  <- c(N   = N0,                         # number of species
+             M   = M,                          # number of patches
+             minval = minval,                  # minimum population size to track
+             K   = pmax(0, rnorm(N0, Kmu, Ksd)),   # vector of carrying capacities
+             r  = rnorm(N0, rmu, rsd),         # vector of initial growth rates
+             A  = c(Amat),                     # interaction coefficients
+             d_c = 0.5,                          # proc. noise c
+             d_z = params$d_z[i],                          # proc. noise z
+             d_n = 0,                          # proc. noise nugget
+             d_m = 0,                          # proc. noise mean
+             d_w = 1,                          # disturbance waiting time
+             cv  = pmax(0, rnorm(N0, cmu, csd)),   # dispersal rate
+             n0 = abs(rep(n0mu, N0)))          # initial abundance post-colonization
+  
+  # process noise follows the formula:
+  #dsd = sqrt(dc*n^dz);
+  #n_new = n + (dsd+dn)*rnorm(1)+dm;
+
+  # make initial abundances
+  nini  <- abs(rnorm(N0*M, n0mu, n0sd))
+  nini  <- rlnorm(n = N0*M, meanlog = 1, sdlog = 1)
+    
+  # time to record abundances in simulation
+  times <- seq(0, steps, by = 1)
+  
+  # log transform initial states - allows for more stable simulations
+  lnini = log(nini)
+  lnini[!is.finite(lnini)] = minval
+  
+  # dummy variable for tracking disturbance times
+  lnini = c(lnini, 1, runif(1))
+  
+  # dummy variable for tracking dispersal effects
+  lnini = c(lnini, rep(1, N0), runif(N0, 0.5, 1))
+  
+  dyn.load("LVmod_metacom_log.so") # load c code
+  # run C code
+  out_C <- ode(y = lnini, 
+               times = times, 
+               func = "derivs",
+               parms = Pars, 
+               dllname = "LVmod_metacom_log", 
+               initfunc = "initmod",
+               events = list(func = "event", root = TRUE), 
+               rootfun = "myroot", 
+               nout = N0, 
+               nroot = N0+1)
+  dyn.unload("LVmod_metacom_log.so") # unload c code (helps with stablity)
+  
+  # output: array with 3 dimensions (time, species, sites)
+  Mout = array(dim =c(nrow(out_C), N0, M))
+  Mout[] = exp(out_C[,1:(N0*M)+1])
+  
+  Mout.gamma <- apply(Mout, 1:2, sum)
+
+  # ------------------------------------
+  
+  # extract Px and Ex using time1 and time2
+  MAT <- Mout.gamma
+  EXTract(MAT, time1, time2)
+  PXTract(MAT, time1, time2)
+  
+  # number of extinctions at gamma scale
+  E.gamma <- EXTract(Mout.gamma, 
+                      time1, 
+                      time2)
+  # per-species prob of extinction at gamma scale
+  P.gamma <- PXTract(Mout.gamma, 
+                             time1, 
+                             time2)
+  
+  # mean number of extinctions at alpha scale
+  E.alpha <- mean(apply(X = Mout,
+                            FUN = EXTract, 
+                            MARGIN = 3, 
+                            time1, 
+                            time2))
+  
+  # per-species prob of extinction
+  P.alpha <- mean(apply(X = Mout,
+                         FUN = PXTract, 
+                         MARGIN = 3, 
+                         time1, 
+                         time2))
+  
+  # slopes of PxAR and ExAR (note: slope = rise/run)
+  P.slope <- (P.gamma-P.alpha) / (time2-time1)
+  E.slope <- (E.gamma-E.alpha) / (time2-time1)
+  
+  results[[i]] <- c(params[i,],
+                    P.alpha = P.alpha, 
+                    P.gamma = P.gamma,
+                    P.slope = P.slope,
+                    E.slope = E.slope)
+} # end of the main loop
+
+res <- as.data.frame(do.call("rbind", results))
+res <- data.table::rbindlist(results)
+
+# re-classify d_z to individual hypotheses
+res$type[res$d_z < 2] <- "Allee"
+res$type[res$d_z > 2] <- "Janzen-Connell"
+res$type[res$d_z == 2] <- "Constant death"
+
+# save simulation results to a file
+write.csv(res, file = "sim_ode_results.csv", row.names=FALSE)
+
+################################################################################
+# PROCESS AND VISUALIZE THE RESULTS OF THE SIMULATIONS
+
+res <- read.csv("sim_ode_results.csv")
+
+# plot the results
+pxar.plot <- ggplot(data = res, aes(x = as.factor(d_z), y = P.slope)) +
+  geom_boxplot(aes(fill = type)) + 
+  #facet_grid(as.factor(S)~.) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_classic() +
+  xlab(expression(d[z])) +
+  ylab("PxAR slope") + 
+  labs(title="(a)") +
+  theme(legend.position = 'none')
+
+exar.plot <- ggplot(data = res, aes(x = as.factor(d_z), y = E.slope)) +
+  geom_boxplot(aes(fill = type)) +
+  #facet_grid(as.factor(S)~.) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+    theme_classic() +
+    xlab(expression(d[z])) +
+    ylab("ExAR slope") + 
+    labs(title="(b)") +
+    theme(legend.position = c(0.9, 0.8))
+  
+grid.arrange(pxar.plot, exar.plot, nrow = 2)
+
+pdf("Figure_dz_vs_scaling.pdf", width=8, height = 8)
+  grid.arrange(pxar.plot, exar.plot, nrow = 2)
+dev.off()
+
+ggplot(data = res, aes(x = as.factor(d_z), y = E.slope)) +
+  geom_boxplot(aes(fill = type)) + 
+  #facet_grid(as.factor(S)~.) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_classic() +
+  xlab(expression(d[z])) +
+  ylab("PxAR slope") + 
+  theme(legend.position = 'none') +
+  facet_grid(.~M)
+
+
+################################################################################
+# RANDOM FOREST ANALYSIS - HOW THE SIMULATION PARAMETERS AFFECT THE SCALING?
+
+rf.P <- randomForest(P.slope ~ S + M + Amu + d_z,
+                     data = na.omit(res)) # note the na.omit()
+
+# calculating and plotting variable importances for the PxAR
+imp <- importance(rf.P)
+imp <- data.frame(imp, predictor = rownames(imp))
+imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
+imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
+imp$predictor <- factor(imp$predictor, levels = c("S","Amu","M","d_z"))
+
+
+rf.imp.P <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor)) +
+            geom_col() + 
+            xlab("Importance for PxAR slope") +
+            ylab("Simulation parameter") + 
+            labs(title="(a)") +
+            theme_classic()
+rf.imp.P
+
+# calculating and plotting variable importances for the ExAR
+rf.E <- randomForest(E.slope ~ S + M + Amu + d_z,
+                     data = na.omit(res)) # note the na.omit()
+
+imp <- importance(rf.E)
+imp <- data.frame(imp, predictor = rownames(imp))
+imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
+imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
+imp$predictor <- factor(imp$predictor, levels = c("S","Amu","M","d_z"))
+
+rf.imp.E <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor)) +
+  geom_col() + 
+  xlab("Importance for ExAR slope") +
+  ylab("Simulation parameter") + 
+  labs(title="(b)") +
+  theme_classic()
+rf.imp.E
+
+grid.arrange(rf.imp.P, rf.imp.E, ncol=2, nrow = 1)
+
+# export the figure to file
+pdf("Figure_rf.pdf", width = 8, height = 4)
+  grid.arrange(rf.imp.P, rf.imp.E, ncol=2, nrow = 1)
+dev.off()
+
+
+
+

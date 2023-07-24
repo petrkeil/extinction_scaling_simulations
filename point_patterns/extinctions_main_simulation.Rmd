@@ -1,0 +1,327 @@
+---
+title: "Spatial scaling of extinction rates in a point pattern simulation"
+author: "Petr Keil"
+date: "2023-07-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Settings and Libraries
+
+```{r, warning = FALSE, message = FALSE}
+library(mobsim) # simulating point pattern communities
+library(manipulate) # sliders and interactive plotting
+library(randomForest) # random forest
+
+# graphics
+library(tidyverse)
+library(ggbreak)
+library(gridExtra) # multiple ggplots in a figure
+library(latex2exp) # for math symbols in figures
+
+# parallel computation
+library(foreach)
+library(doParallel)
+
+# our own functions
+source("extinctions_functions.r")
+
+# setting the random seed
+set.seed(12345)
+```
+
+# Vojtech Bartak's function relating probability of death to population density
+
+This is a function with two parameters:
+
+- **alpha** takes value 0 < alpha < 1. It indicates where the function intercepts
+y-axis.
+- **beta** is the steepness of the function. Value of 0 indicates no relationship,
+values < 0 are a negative realtionship, and > 0 are a positive increasing relationship.
+The further apart from 0, the steeper is the function.
+
+$$
+P_{death} = \frac{e^{N \times sgn(\beta) \times e^{(-1 / |\beta|)}}}
+                 {\frac{1-\alpha}{\alpha} + e^{N \times sgn(\beta) \times e^{(-1 / |\beta|)}}} 
+$$
+Exploring the function behavior:
+
+```{r}
+P.death <- effect.f(alpha = 0.9, beta = -0.3)
+
+#manipulate(
+#  effect.f(alpha, beta),
+#  alpha = slider(0, 1, initial = 0.5, step = 0.05),
+#  beta = slider(-1, 1, initial = 0, step = 0.05)
+#)
+```
+
+# Plot of the hypotheses using Vojtech's function
+
+```{r, fig.width=10}
+## Set parameter values:
+
+  # set parameter values
+  params <- expand.grid(alpha = c(0.1, 0.3, 0.5, 0.7, 0.9),
+                        beta = c(-1, -0.4, -0.3, 0, 0.3, 0.4, 1))
+  params <- data.frame(params, type = "")
+  params$type[params$beta < 0] <- "Allee"
+  params$type[params$beta > 0] <- "Janzen-Connell"
+  params$type[params$beta == 0] <- "Constant death"
+
+  # population abundance
+  N <- rep(1:100, each = nrow(params))
+    
+  params <- data.frame(params, N)
+  
+  # probability of death
+  P.death <- effect.f(alpha = params$alpha, 
+                      beta=params$beta, 
+                      N = params$N, 
+                      plot = FALSE)
+  
+  params <- data.frame(params, P.death)
+
+
+## Plot the three hypotheses:  
+  p1 <- ggplot(data = params, aes(x = N, y= P.death)) +
+                geom_line(aes(colour = as.factor(beta), 
+                              colour = as.factor(alpha)),
+                          size = 0.5) +
+                facet_grid(.~type) + 
+                ylab(expression(P[death])) +
+                theme_classic() +
+                scale_colour_discrete(name = expression(beta)) +
+                theme(legend.position = "right")
+  p1
+  
+## Export figure for the paper
+  pdf("Figure_Bartak_functions.pdf", width = 9, height = 3)
+    p1
+  dev.off()
+```
+
+# Histograms illustrating different SADs
+
+```{r, fig.width=10}
+dat <- SAD.prob.mass(1000, 100)
+
+SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
+          geom_point() +
+          geom_line() +
+          theme_classic() + 
+          ylim(0, 0.4) + ylab("Probablity mass") + 
+          xlab("N") +
+          labs(title="(a)") +
+          facet_grid(.~cv_abund)
+SADs
+```
+
+# Interactive plots of community simulations
+
+```{r}
+#par(mfrow = c(3,2))
+
+#manipulate(
+#  run.all(alpha, beta, side.divisions = c(2,4,8,16,32), N, S, sigma, cv.abund),
+#  S = slider(1, 100, initial = 50, step = 1),
+#  N = slider(1, 1000, initial = 500, step = 10),
+#  cv.abund = slider(0.1, 4, initial = 1, step = 0.01),
+#  sigma = slider(0, 1, initial = 0.1, step = 0.01),
+#  alpha = slider(0.01, 0.99, initial = 0.9, step = 0.01),
+#  beta = slider(-8, 8, initial = -2, step = 0.01)
+#)  
+```
+
+# Simulation of extinction in communities with different parameter values
+
+```{r}
+## set parameter values
+params <- expand.grid(alpha = c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99),
+                      beta = c(-4, -1, -0.4, 0, 0.4, 1, 4),
+                      N.tot = c(100, 1000) , 
+                      S.frac = c(0.05, 0.1, 0.2), 
+                      sigma = c(0.01, 0.1, 1),
+                      cv.abund = c(0.1, 1, 10))
+
+params <- data.frame(params, S.tot = params$N.tot*params$S.frac)
+
+# fix random seed
+set.seed(12345)
+
+# number of cores for the parallel simulation (each parameter combination
+# will run N.cores times)
+N.cores <- 10
+params.list <- rep(list(params), times = N.cores)
+
+# initialize cores
+cl <- makeCluster(N.cores)
+registerDoParallel(cl, cores = N.cores)
+
+# run the simulation
+results <- foreach(i = 1:N.cores, 
+                   .combine = rbind,
+                   .packages = c("mobsim", "tidyverse")) %dopar% 
+{
+  # the main.loop function that simulates the community,
+  # executes sampling, and analyzes the scaling
+  main.loop(params)
+}
+
+# release the cores
+stopCluster(cl)
+
+# classify results to the three types of N-P.death dependency
+res <- data.frame(results, type = "")
+res$type[res$beta < 0] <- "Allee"
+res$type[res$beta > 0] <- "Janzen-Connell"
+res$type[res$beta == 0] <- "Constant death"
+```
+
+Export simulation results to a file:
+
+```{r}
+write.csv(res, file = "sim_results.csv", row.names=FALSE)
+```
+
+# Main plot of the beta-slope hypothesis
+
+```{r, fig.width=10, fig.height=10}
+res <- read.csv("sim_results.csv")
+
+slope.vs.beta.E <- ggplot(data = res, aes(x = as.factor(beta), y = slope.E)) +
+  #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
+  geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
+  geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
+  facet_grid(.~as.factor(cv.abund)) + 
+  theme_classic() +
+  ylim(c(-1.2,1.2)) +
+  labs(title="(b)") +
+  xlab(expression(beta)) +
+  ylab("ExAR slope") + 
+  theme(legend.position = "none")
+slope.vs.beta.E
+
+slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
+  #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
+  geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
+  geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
+  facet_grid(.~as.factor(cv.abund)) + 
+  theme_classic() +
+  xlab(expression(beta)) +
+  ylab("PxAR slope") + 
+  labs(title="(c)") +
+  theme(legend.position = c(0.1, 0.8))
+slope.vs.beta.P
+
+grid.arrange(SADs, slope.vs.beta.E, slope.vs.beta.P , nrow = 3, heights=c(0.4, 0.7, 0.7))
+
+## Export figure for the paper
+pdf("Figure_beta_vs_scaling.pdf", width = 8, height=11)
+  grid.arrange(SADs, slope.vs.beta.P, slope.vs.beta.E , nrow = 3, heights=c(0.4, 0.7, 0.7))
+dev.off()
+```
+
+```{r}
+ggplot(data = res, aes(x = slope.S1, y = slope.P)) +
+  geom_point(aes(colour = beta)) + theme_classic()
+
+ggplot(data = res, aes(x = slope.S1, y = slope.E)) +
+  geom_point(aes(colour = beta)) + theme_classic()
+
+```
+
+# Analyze the simulations with random forest
+
+Which simulation parameters and community properties are most important
+in driving the slope of the extinction scaling?
+
+```{r}
+rf.P <- randomForest(slope.P ~ alpha + 
+                               beta + 
+                               N.tot + 
+                               sigma + 
+                               cv.abund +
+                               S.tot, 
+                   data = na.omit(res)) # note the na.omit()
+
+imp <- importance(rf.P)
+imp <- data.frame(imp, predictor = rownames(imp))
+imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
+imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
+imp$predictor <- factor(imp$predictor, levels = c("N.tot","S.tot", "sigma",
+                                                  "cv.abund","alpha", "beta"))
+
+
+
+rf.imp.P <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
+  geom_col() +   
+  xlab("Importance for PxAR slope") +
+  ylab("Simulation parameter") + 
+  labs(title="(a)") +
+  theme_classic()
+rf.imp.P
+
+rf.E <- randomForest(slope.E ~ alpha + 
+                               beta + 
+                               N.tot + 
+                               sigma + 
+                               cv.abund +
+                               S.tot, 
+                   data = na.omit(res)) # note the na.omit()
+
+imp <- importance(rf.E)
+imp <- data.frame(imp, predictor = rownames(imp))
+imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
+imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
+imp$predictor <- factor(imp$predictor, levels = c("N.tot","S.tot", "sigma",
+                                                  "cv.abund","alpha", "beta"))
+
+rf.imp.E <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
+  geom_col() +   
+  xlab("Importance for ExAR slope") +
+  ylab("Simulation parameter") + 
+  labs(title="(b)") +
+  theme_classic()
+rf.imp.E
+
+pdf("Figure_rf.pdf", width = 8, height = 4)
+grid.arrange(rf.imp.P, rf.imp.E, nrow = 2, ncol = 1)
+dev.off()
+
+```
+
+# Plots of effect of the variables found by the random forest analysis
+
+```{r, fig.width = 10, fig.height = 5}
+# effect of the mean probability of death on extinction scaling
+ggplot(data = res, aes(x = mean.P.minus, y = slope.P)) +
+  geom_abline(intercept=0, slope = 0) +
+  geom_point(aes(colour = type), alpha = 0.5, shape = 1, size = 0.5) +
+  theme_classic() +
+  geom_smooth(se=FALSE, aes(colour = type), method=lm, formula = y ~ poly(x, 2)) +
+  xlab(expression(paste("Average ", P[death]))) +
+  ylab("PxAR slope") +
+  geom_smooth(se=FALSE, aes(colour = type)) +
+  facet_grid(.~cv.abund)
+
+# effect of mean log abundance on extinction scaling
+ggplot(data = res, aes(x = mean.log.abund, y = slope.P)) +
+  geom_abline(intercept=0, slope = 0) +
+  geom_point(aes(colour = type), shape = 1, alpha = 0.5, size = 0.5) +
+  theme_classic() +
+  xlab("Mean log Abundance") +
+  ylab("PxAR slope") +
+  geom_smooth(se=FALSE, aes(colour = type), method=lm, formula = y ~ poly(x, 2)) +
+  facet_grid(.~cv.abund)
+
+# effect of alpha on extinction scaling
+ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
+  geom_abline(intercept=0, slope = 0) +
+  geom_boxplot(aes(fill = type), outlier.colour = "grey") +
+  facet_grid(as.factor(alpha)~as.factor(cv.abund)) + 
+  theme_classic()
+```
