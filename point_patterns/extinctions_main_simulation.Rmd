@@ -115,7 +115,7 @@ SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
           theme_classic() + 
           ylim(0, 0.4) + ylab("Probablity mass") + 
           xlab("N") +
-          labs(title="(a)") +
+          labs(title="(c)") +
           facet_grid(.~cv_abund)
 SADs
 ```
@@ -213,7 +213,7 @@ slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   theme_classic() +
   xlab(expression(beta)) +
   ylab("PxAR slope") + 
-  labs(title="(c)") +
+  labs(title="(a)") +
   theme(legend.position = c(0.1, 0.8))
 slope.vs.beta.P
 
@@ -221,7 +221,7 @@ grid.arrange(SADs, slope.vs.beta.E, slope.vs.beta.P , nrow = 3, heights=c(0.4, 0
 
 ## Export figure for the paper
 pdf("Figure_beta_vs_scaling.pdf", width = 8, height=11)
-  grid.arrange(SADs, slope.vs.beta.P, slope.vs.beta.E , nrow = 3, heights=c(0.4, 0.7, 0.7))
+  grid.arrange( slope.vs.beta.P, slope.vs.beta.E, SADs, nrow = 3, heights=c(0.7, 0.7, 0.4))
 dev.off()
 ```
 
@@ -289,7 +289,7 @@ rf.imp.E <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
 rf.imp.E
 
 pdf("Figure_rf.pdf", width = 8, height = 4)
-grid.arrange(rf.imp.P, rf.imp.E, nrow = 2, ncol = 1)
+grid.arrange(rf.imp.P, rf.imp.E, nrow = 1, ncol = 2)
 dev.off()
 
 ```
