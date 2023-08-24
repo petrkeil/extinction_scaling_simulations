@@ -217,6 +217,18 @@ slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   theme(legend.position = c(0.1, 0.8))
 slope.vs.beta.P
 
+slope.simple <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
+  #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
+  geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
+  geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
+  #facet_grid(.~as.factor(cv.abund)) + 
+  theme_classic() +
+  xlab(expression(beta)) +
+  ylab("PxAR slope") + 
+  theme(legend.position = c(0.8, 0.8))
+slope.simple
+
+
 grid.arrange(SADs, slope.vs.beta.E, slope.vs.beta.P , nrow = 3, heights=c(0.4, 0.7, 0.7))
 
 ## Export figure for the paper

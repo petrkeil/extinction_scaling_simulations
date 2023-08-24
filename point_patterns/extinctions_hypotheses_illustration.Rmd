@@ -26,7 +26,7 @@ library(foreach)
 library(doParallel)
 
 # our own functions
-source("simulation_functions.r")
+source("extinctions_functions.r")
 
 # setting the random seed
 set.seed(12345)
@@ -51,8 +51,8 @@ N = 100
 S = 10
 cv.abund = 1
 sigma = 0.1
-alpha = 0.1
-beta = 1
+alpha = 0.9
+beta = -1
 side.divisions = c(2,4,8,16)
 set.seed(1234)
 
@@ -94,6 +94,26 @@ eff1.plot <- ggplot(data = eff1, aes(x = N, y = P.death)) +
                            beta = beta,
                            plot.res = TRUE)
 
+
+# ------------------------------------------------------------------------------  
+# plot just the points
+  ggplot(data = com$census, aes(x = x, y = y)) +
+      geom_point(aes(colour = species)) +
+    theme_minimal() + 
+     #geom_point(data = dead.coords, shape = 4, size = 2.5) +
+        coord_fixed(ratio = 1) +
+        scale_x_continuous(breaks = seq(0, 1, by = 1/grains[i])) + 
+        scale_y_continuous(breaks = seq(0, 1, by = 1/grains[i])) + 
+        theme(axis.text.x=element_blank(),
+              legend.position = "none",
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              axis.text.y=element_blank(),
+              axis.title.x=element_blank(), axis.title.y=element_blank()) +
+        labs(title= my.labs[i]) 
+  
+  
+  
 # ------------------------------------------------------------------------------  
   figs <- list()
   grains <- c(16,8,4,2)
@@ -119,7 +139,7 @@ eff1.plot <- ggplot(data = eff1, aes(x = N, y = P.death)) +
   grid.arrange(figs[[1]], figs[[2]], figs[[3]], figs[[4]], nrow = 1)
 
     
- ExAR<- ggplot(data = deltas, aes(x = A, y = E)) + 
+ ExAR<- ggplot(data = deltas, aes(x = A, y = E.x)) + 
     geom_point() +
     scale_x_continuous(trans='log10') +
     geom_smooth(method = lm, se = FALSE, colour = "black", size = 0.5) +
