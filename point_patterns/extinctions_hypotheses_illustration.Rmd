@@ -179,7 +179,105 @@ dev.off()
 ```
 
 
+# Hypothesis 3
 
+```{r}
+
+  A = 1:100
+  z=0.28
+  exz = -0.1
+  c=3
+  S = c*A^z
+  
+  # CURVE 1 - shallow power law
+  P_E1 = (c*A^exz)/max(c*A^exz)*0.5
+  E1 = S*P_E1
+
+  # CURVE 2
+  exz2 = -0.3
+  P_E2 = (2*(1-A/max(A)))/max(2*(1-A/max(A)))*0.2 + 0.3 
+  P_E2 = 0.5 - 0.003*A; plot(A, P_E2)
+  E2 = S*P_E2
+  
+  # CURVE 3
+  P_E3 = (10^(A^-0.3))/max(10^(A^-0.3))*0.5
+  E3 = S*P_E3
+  
+  dat <- data.frame(A = rep(A, times = 3), 
+                    S = rep(S, times = 3),
+                    Px = c(P_E1, P_E2, P_E3),
+                    Ex = c(E1, E2, E3),
+                    scenario = rep(c("i","ii","iii"), each = length(A)))
+  
+  ggplot(data = dat, aes(x = A, y = S)) + 
+    geom_line(aes(linetype = scenario)) + 
+    labs(title = "(a) SAR") +
+    scale_x_continuous(trans='log10') +
+    scale_y_continuous(trans='log10') +
+    theme(legend.title=element_blank()) +
+    theme_classic()  
+  
+  ggplot(data = dat, aes(x = A, y = Px)) + 
+    geom_line(aes(linetype = scenario)) + 
+    scale_x_continuous(trans='log10') +
+    labs(title = "(b) PxAR") +
+    theme(legend.title=element_blank()) +
+    theme_classic()  
+  
+  ggplot(data = dat, aes(x = A, y = Ex)) + 
+    geom_line(aes(linetype = scenario)) + 
+    scale_x_continuous(trans='log10') +
+    labs(title = "(c) ExAR") +
+    theme(legend.title=element_blank()) +
+    theme_classic()  
+  
+  
+```
+  
+  
+```{r}  
+pdf("Figure_SAR.pdf", width=8, height=2.7)  
+ par(mfrow=c(1,3), mai=c(0.7,0.7,0.3,0.1))
+  
+ 
+ 
+ 
+ ## PLOT 1
+ plot(A, S, type="l", frame=FALSE, lwd=2, las=1, 
+       #ylab=expression(paste(log[10], italic(" S"))),
+       ylab=expression(italic(" S")),
+       xlab=expression(italic(" A")),
+       main="SAR (given)", 
+       font.main = 1)  
+ mtext("a", side=3, adj=-0.2, padj=-0.5, font=2)
+
+ ## PLOT 2
+ plot(A, P_E1, type="l", frame=FALSE, ylim=c(0,0.6), las=1,
+      ylab=expression(italic("P"[X])),
+      xlab=expression(italic("A")), lwd=2, lty=1, col=mypal[1],
+      main="PxAR (given)", 
+      font.main = 1) 
+ lines(A, P_E2, col=mypal[2], lwd=2, lty=2)
+ lines(A, P_E3, col=mypal[3], lwd=2, lty=4)
+ mtext("b", side=3, adj=-0.2, padj=-0.5, font=2)
+ 
+ 
+ ## PLOT 3
+ plot(A, E1, type="l", ylab=expression(italic("N"[X])), 
+                       xlab=expression(italic("A")),
+      frame=FALSE, ylim=c(0,4), lwd=2, 
+      col=mypal[1], las=1, lty=1,
+      main=expression(paste("NxAR = ", SAR %*% PxAR)), 
+      font.main = 1) 
+ lines(A, E2, col=mypal[2], lwd=2, lty=2)
+ lines(A, E3, col=mypal[3], lwd=2, lty=4)
+ mtext("c", side=3, adj=-0.2, padj=-0.5, font=2)
+
+dev.off()
+
+# ------------------------------------------------------------------------------
+
+```
 
 
 
