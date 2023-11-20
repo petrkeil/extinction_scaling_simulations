@@ -108,6 +108,8 @@ P.death <- effect.f(alpha = 0.9, beta = -0.3)
 
 ```{r, fig.width=10}
 dat <- SAD.prob.mass(1000, 100)
+dat$cv_abund <- paste("CV[N]==", dat$cv_abund, sep="")
+
 
 SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
           geom_point() +
@@ -116,7 +118,7 @@ SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
           ylim(0, 0.4) + ylab("Probablity mass") + 
           xlab("N") +
           labs(title="(c)") +
-          facet_grid(.~cv_abund)
+          facet_grid(.~cv_abund, labeller = label_parsed)
 SADs
 ```
 
@@ -191,12 +193,13 @@ write.csv(res, file = "sim_results.csv", row.names=FALSE)
 
 ```{r, fig.width=10, fig.height=10}
 res <- read.csv("sim_results.csv")
+res$cv.abund <- paste("CV[N]==", res$cv.abund, sep="")
 
 slope.vs.beta.E <- ggplot(data = res, aes(x = as.factor(beta), y = slope.E)) +
   #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
   geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
   geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
-  facet_grid(.~as.factor(cv.abund)) + 
+  facet_grid(.~as.factor(cv.abund), labeller = label_parsed) + 
   theme_classic() +
   ylim(c(-1.2,1.2)) +
   labs(title="(b)") +
@@ -209,7 +212,7 @@ slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
   geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
   geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
-  facet_grid(.~as.factor(cv.abund)) + 
+  facet_grid(.~as.factor(cv.abund), labeller = label_parsed) + 
   theme_classic() +
   xlab(expression(beta)) +
   ylab("PxAR slope") + 
