@@ -27,7 +27,7 @@ library(gridExtra) # multiple ggplots in a figure
 library(latex2exp) # for math symbols in figures
 
 # our own functions
-source("extinctions_functions.r")
+source("1_point_pattern_functions.r")
 
 # setting the random seed
 set.seed(12345)

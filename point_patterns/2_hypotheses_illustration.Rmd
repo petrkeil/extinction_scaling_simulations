@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 This is a code that generates plots for Figure 1 in the main text. The figure
 illustrates the three main hypotheses.
 
-# Loading libraries, functions, and setting seed
+# Loading libraries, functions, and setting random seed
 
 ```{r, warning = FALSE, message = FALSE}
 library(mobsim) # simulating point pattern communities
@@ -31,7 +31,7 @@ library(gridExtra) # multiple ggplots in a figure
 library(latex2exp) # for math symbols in figures
 
 # our own functions
-source("extinctions_functions.r")
+source("1_point_pattern_functions.r")
 
 # setting the random seed
 set.seed(1234)
