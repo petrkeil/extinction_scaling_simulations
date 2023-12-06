@@ -1,5 +1,12 @@
+# 6/12/2023 by Petr Keil, keil@fzp.czu.cz
 
-# function that extracts number of extinctions at a site
+# Function that extracts number of extinctions at a site
+# Arguments:
+# MAT - matrix containing abundances (or incidences) with species as columns, 
+#       and time steps as rows
+# time1 - first (reference) time step
+# time2 - a second time step, in which the extinctions will be counted
+
 EXTract <- function(MAT, time1, time2)
 {
   MAT <- MAT[c(time1, time2),]
@@ -11,7 +18,13 @@ EXTract <- function(MAT, time1, time2)
   return(Ex)
 }
 
-# function that extracts per-species extinction rate at a site
+# Function that extracts per-species extinction rate at a site
+# Arguments:
+# MAT - matrix containing abundances (or incidences) with species as columns, 
+#       and time steps as rows
+# time1 - first (reference) time step
+# time2 - a second time step, in which the extinctions will be counted
+
 PXTract <- function(MAT, time1, time2)
 {
   MAT <- MAT[c(time1, time2),]
