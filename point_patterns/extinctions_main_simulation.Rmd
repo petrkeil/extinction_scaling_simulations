@@ -1,8 +1,14 @@
 ---
-title: "Spatial scaling of extinction rates in a point pattern simulation"
+title: "Main point pattern simulations"
 author: "Petr Keil"
-date: "2023-07-12"
-output: html_document
+email: "keil@fzp.czu.cz"
+date: "2023-11-28"
+output: 
+  html_document: 
+    highlight: tango
+    theme: cerulean
+    number_sections: yes
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -33,83 +39,11 @@ source("extinctions_functions.r")
 set.seed(12345)
 ```
 
-# Vojtech Bartak's function relating probability of death to population density
-
-This is a function with two parameters:
-
-- **alpha** takes value 0 < alpha < 1. It indicates where the function intercepts
-y-axis.
-- **beta** is the steepness of the function. Value of 0 indicates no relationship,
-values < 0 are a negative realtionship, and > 0 are a positive increasing relationship.
-The further apart from 0, the steeper is the function.
-
-$$
-P_{death} = \frac{e^{N \times sgn(\beta) \times e^{(-1 / |\beta|)}}}
-                 {\frac{1-\alpha}{\alpha} + e^{N \times sgn(\beta) \times e^{(-1 / |\beta|)}}} 
-$$
-Exploring the function behavior:
-
-```{r}
-P.death <- effect.f(alpha = 0.9, beta = -0.3)
-
-#manipulate(
-#  effect.f(alpha, beta),
-#  alpha = slider(0, 1, initial = 0.5, step = 0.05),
-#  beta = slider(-1, 1, initial = 0, step = 0.05)
-#)
-```
-
-# Plot of the hypotheses using Vojtech's function
-
-```{r, fig.width=10}
-## Set parameter values:
-
-  # set parameter values
-  params <- expand.grid(alpha = c(0.1, 0.3, 0.5, 0.7, 0.9),
-                        beta = c(-1, -0.4, -0.3, 0, 0.3, 0.4, 1))
-  params <- data.frame(params, type = "")
-  params$type[params$beta < 0] <- "Allee"
-  params$type[params$beta > 0] <- "Janzen-Connell"
-  params$type[params$beta == 0] <- "Constant death"
-
-  # population abundance
-  N <- rep(1:100, each = nrow(params))
-    
-  params <- data.frame(params, N)
-  
-  # probability of death
-  P.death <- effect.f(alpha = params$alpha, 
-                      beta=params$beta, 
-                      N = params$N, 
-                      plot = FALSE)
-  
-  params <- data.frame(params, P.death)
-
-
-## Plot the three hypotheses:  
-  p1 <- ggplot(data = params, aes(x = N, y= P.death)) +
-                geom_line(aes(colour = as.factor(beta), 
-                              colour = as.factor(alpha)),
-                          size = 0.5) +
-                facet_grid(.~type) + 
-                ylab(expression(P[death])) +
-                theme_classic() +
-                scale_colour_discrete(name = expression(beta)) +
-                theme(legend.position = "right")
-  p1
-  
-## Export figure for the paper
-  pdf("Figure_Bartak_functions.pdf", width = 9, height = 3)
-    p1
-  dev.off()
-```
-
 # Histograms illustrating different SADs
 
 ```{r, fig.width=10}
 dat <- SAD.prob.mass(1000, 100)
 dat$cv_abund <- paste("CV[N]==", dat$cv_abund, sep="")
-
 
 SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
           geom_point() +
@@ -122,25 +56,9 @@ SADs <- ggplot(data = dat, aes(x=N, y = PM)) +
 SADs
 ```
 
-# Interactive plots of community simulations
-
-```{r}
-#par(mfrow = c(3,2))
-
-#manipulate(
-#  run.all(alpha, beta, side.divisions = c(2,4,8,16,32), N, S, sigma, cv.abund),
-#  S = slider(1, 100, initial = 50, step = 1),
-#  N = slider(1, 1000, initial = 500, step = 10),
-#  cv.abund = slider(0.1, 4, initial = 1, step = 0.01),
-#  sigma = slider(0, 1, initial = 0.1, step = 0.01),
-#  alpha = slider(0.01, 0.99, initial = 0.9, step = 0.01),
-#  beta = slider(-8, 8, initial = -2, step = 0.01)
-#)  
-```
-
 # Simulation of extinction in communities with different parameter values
 
-```{r}
+```{r, eval=TRUE}
 ## set parameter values
 params <- expand.grid(alpha = c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99),
                       beta = c(-4, -1, -0.4, 0, 0.4, 1, 4),
@@ -185,13 +103,13 @@ res$type[res$beta == 0] <- "Constant death"
 
 Export simulation results to a file:
 
-```{r}
+```{r, eval=TRUE}
 write.csv(res, file = "sim_results.csv", row.names=FALSE)
 ```
 
 # Main plot of the beta-slope hypothesis
 
-```{r, fig.width=10, fig.height=10}
+```{r}
 res <- read.csv("sim_results.csv")
 res$cv.abund <- paste("CV[N]==", res$cv.abund, sep="")
 
@@ -230,9 +148,12 @@ slope.simple <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   ylab("PxAR slope") + 
   theme(legend.position = c(0.8, 0.8))
 slope.simple
+```
 
+Plot all of the results together
 
-grid.arrange(SADs, slope.vs.beta.E, slope.vs.beta.P , nrow = 3, heights=c(0.4, 0.7, 0.7))
+```{r, fig.width=10, fig.height=10}
+grid.arrange( slope.vs.beta.P, slope.vs.beta.E, SADs, nrow = 3, heights=c(0.4, 0.7, 0.7))
 
 ## Export figure for the paper
 pdf("Figure_beta_vs_scaling.pdf", width = 8, height=11)
@@ -240,19 +161,12 @@ pdf("Figure_beta_vs_scaling.pdf", width = 8, height=11)
 dev.off()
 ```
 
-```{r}
-ggplot(data = res, aes(x = slope.S1, y = slope.P)) +
-  geom_point(aes(colour = beta)) + theme_classic()
-
-ggplot(data = res, aes(x = slope.S1, y = slope.E)) +
-  geom_point(aes(colour = beta)) + theme_classic()
-
-```
-
 # Analyze the simulations with random forest
 
 Which simulation parameters and community properties are most important
 in driving the slope of the extinction scaling?
+
+## Random forest - PxAR
 
 ```{r}
 rf.P <- randomForest(slope.P ~ alpha + 
@@ -263,15 +177,17 @@ rf.P <- randomForest(slope.P ~ alpha +
                                S.tot, 
                    data = na.omit(res)) # note the na.omit()
 
+# extract variable importance
 imp <- importance(rf.P)
 imp <- data.frame(imp, predictor = rownames(imp))
+# order results by importance
 imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
+# turn variable names into an ordered factor
 imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
 imp$predictor <- factor(imp$predictor, levels = c("N.tot","S.tot", "sigma",
                                                   "cv.abund","alpha", "beta"))
 
-
-
+# plot the importances
 rf.imp.P <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
   geom_col() +   
   xlab("Importance for PxAR slope") +
@@ -279,7 +195,11 @@ rf.imp.P <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
   labs(title="(a)") +
   theme_classic()
 rf.imp.P
+```
 
+# Random forest - ExAR
+
+```{r}
 rf.E <- randomForest(slope.E ~ alpha + 
                                beta + 
                                N.tot + 
@@ -288,13 +208,16 @@ rf.E <- randomForest(slope.E ~ alpha +
                                S.tot, 
                    data = na.omit(res)) # note the na.omit()
 
+# extract variable importance
 imp <- importance(rf.E)
 imp <- data.frame(imp, predictor = rownames(imp))
+# order results by importance
 imp <- imp[order(imp$IncNodePurity, decreasing=TRUE),]
 imp$predictor <- with(imp, reorder(predictor, IncNodePurity, max))
+# turn variable names into an ordered factor
 imp$predictor <- factor(imp$predictor, levels = c("N.tot","S.tot", "sigma",
                                                   "cv.abund","alpha", "beta"))
-
+# plot the importances
 rf.imp.E <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
   geom_col() +   
   xlab("Importance for ExAR slope") +
@@ -302,11 +225,14 @@ rf.imp.E <- ggplot(data = imp, aes(x = IncNodePurity, y = predictor))+
   labs(title="(b)") +
   theme_classic()
 rf.imp.E
+```
 
+Export all importance figures to a file
+
+```{r}
 pdf("Figure_rf.pdf", width = 8, height = 4)
 grid.arrange(rf.imp.P, rf.imp.E, nrow = 1, ncol = 2)
 dev.off()
-
 ```
 
 # Plots of effect of the variables found by the random forest analysis
@@ -339,4 +265,10 @@ ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   geom_boxplot(aes(fill = type), outlier.colour = "grey") +
   facet_grid(as.factor(alpha)~as.factor(cv.abund)) + 
   theme_classic()
+```
+
+# Session info
+
+```{r}
+sessionInfo()
 ```

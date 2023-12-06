@@ -1,0 +1,112 @@
+---
+title: "Code for Figure 2 illustrating the Bartak function"
+author: "Petr Keil"
+email: "keil@fzp.czu.cz"
+date: "2023-06-21"
+output: 
+  html_document: 
+    highlight: tango
+    theme: cerulean
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading libraries, functions, and setting seed
+
+```{r, warning = FALSE, message = FALSE}
+library(manipulate) # sliders and interactive plotting
+
+# graphics
+library(tidyverse)
+library(ggbreak)
+library(gridExtra) # multiple ggplots in a figure
+library(latex2exp) # for math symbols in figures
+
+# our own functions
+source("extinctions_functions.r")
+
+# setting the random seed
+set.seed(12345)
+```
+
+The Bartak function has two parameters:
+
+- **alpha** takes value 0 < alpha < 1. It indicates where the function intercepts
+y-axis.
+- **beta** is the steepness of the function. Value of 0 indicates no relationship,
+values < 0 are a negative relationship, and > 0 are a positive increasing relationship.
+The further apart from 0, the steeper is the function.
+
+Exploring the function behavior - just uncomment the `manipulate` command:
+
+```{r}
+
+#manipulate(
+#  effect.f(alpha, beta),
+#  alpha = slider(0, 1, initial = 0.5, step = 0.05),
+#  beta = slider(-1, 1, initial = 0, step = 0.05)
+#)
+
+P.death <- effect.f(alpha = 0.9, beta = -0.3)
+```
+
+# Make Figure 2
+
+```{r, fig.width=10}
+## Set parameter values:
+
+params <- expand.grid(alpha = c(0.1, 0.3, 0.5, 0.7, 0.9),
+                      beta = c(-1, -0.4, -0.3, 0, 0.3, 0.4, 1))
+params <- data.frame(params, type = "")
+params$type[params$beta < 0] <- "Allee"
+params$type[params$beta > 0] <- "Janzen-Connell"
+params$type[params$beta == 0] <- "Constant death"
+
+# population abundance
+N <- rep(1:100, each = nrow(params))
+  
+params <- data.frame(params, N)
+
+# probability of death
+P.death <- effect.f(alpha = params$alpha, 
+                    beta=params$beta, 
+                    N = params$N, 
+                    plot = FALSE)
+
+params <- data.frame(params, P.death)
+
+
+## Plot the three hypotheses:  
+p1 <- ggplot(data = params, aes(x = N, y= P.death)) +
+              geom_line(aes(colour = as.factor(beta), 
+                            colour = as.factor(alpha)),
+                        size = 0.5) +
+              facet_grid(.~type) + 
+              ylab(expression(P[death])) +
+              theme_classic() +
+              scale_colour_discrete(name = expression(beta)) +
+              theme(legend.position = "right")
+p1
+
+## Export figure for the paper
+pdf("Figure_Bartak_functions.pdf", width = 9, height = 3)
+  p1
+dev.off()
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
+  
+
+
+
+
+

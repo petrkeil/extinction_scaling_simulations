@@ -17,7 +17,6 @@
 # Value:
 # A vector of per-individual probabilities of death
 
-
 effect.f <- function(alpha=0.5, beta=0.5, N = seq(1,100), plot = TRUE)
 {
   # the main calculation:
