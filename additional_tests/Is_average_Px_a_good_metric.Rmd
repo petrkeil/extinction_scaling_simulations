@@ -1,0 +1,65 @@
+---
+title: "Is Ex=SPx a good assumption?"
+author: "Petr Keil"
+date: "2024-09-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In a previous round of reviews one referee pointed that: *"If the mortality probability of individuals (denoted as Pdeath) is given, the probability of the extinction of a species with abundance N is: Pdeath^N. As such, the number of extinct species should be SUM(Pdeath^N) across all species in a local area (or region). Although the calculation of extinctions on line 107, Ex=SPx, is not wrong, the formula is only accurate if all species are equally abundant and each individual has the same probability of death. But that is not the case in the study. More importantly, this allows analytically including eq. (1) into the calculation of extinction rates (Px) and the number of extinctions so that to directly assess the impact of beta. The numeric simulations in the study are not needed."*
+
+Below I defend that Ex=SPx.
+
+# Simulations
+
+Here I show that it does not matter, if we use average Px over all species, or if each
+species is killed according to its own Px. The total number of extinctions is the same.
+
+
+```{r, fig.width=7, fig.height=7}
+# shape parameters of beta distribution
+shape1 <- c(0.5, 1, 2, 3, 4, 5)
+shape2 <- c(0.5, 1, 2, 3, 4, 5)
+# numbers of species in each simulation
+S <- c(2, 8, 16, 32, 64, 128, 256)
+
+# combinations of all simulation parameters
+dat <- expand.grid(shape1 = shape1, shape2 = shape2, S = S)
+dat <- data.frame(dat, 
+                  Px=numeric(length(shape1)),
+                  X_by_spec=numeric(length(shape1)),
+                  X_by_avg=numeric(length(shape1)))
+
+# running the simulations
+for(i in 1:nrow(dat))
+{
+  # Generate an uneven Px distribution from a beta PDF
+  Px <- rbeta(n=dat$S[i], shape1=dat$shape1[i], shape2=dat$shape2[i])
+  # kill each species with its own probability Px
+  X_by_spec <- rbinom(n=length(Px), prob=Px, size=1)
+  # kill each species using an average probability Px
+  X_by_avg <- rbinom(n=length(Px), prob=mean(Px), size=1)
+  
+  dat$Px[i] <- mean(Px)
+  # sum up the extinctions in the two scenarios
+  dat$X_by_spec[i] <- sum(X_by_spec)
+  dat$X_by_avg[i] <- sum(X_by_avg)
+}
+
+# plotting the output
+plot(dat$X_by_spec, dat$X_by_avg, 
+     xlab = "Number of extinctions when Px is applied species-by-species",
+     ylab = "Number of extinctions when Px is an average",)
+abline(a=0, b=1)
+```
+
+# Conclusion
+
+Based on the figure above, it does not matter if we apply an average Px to each species,
+or if we first kill each species with its own probability. The total nubmer of extinctions 
+is the same.
+
+Thus, Ex is always SPx.
