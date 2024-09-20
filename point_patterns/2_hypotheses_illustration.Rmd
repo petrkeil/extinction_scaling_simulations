@@ -63,19 +63,19 @@ SAD$species <- as.character(SAD$species)
 census <- left_join(com$census, SAD, by="species")
 ```
 
-# Hypothesis 1 - Allee effect
+# Hypothesis 1 - NegDD effect
 
 ## Bartak function
 
 ```{r}
-# set parameters that correspond to the decreasing Bartak function (allee effect)
+# set parameters that correspond to the decreasing Bartak function (NegDD effect)
 alpha = 0.9
 beta = -1
 
-bartak.allee.dat <- data.frame(N = seq(1,40), 
+bartak.NegDD.dat <- data.frame(N = seq(1,40), 
                               P.death = effect.f(alpha, beta, N = seq(1,40), plot=FALSE))
 
-bartak.allee.plot <- ggplot(data = bartak.allee.dat, aes(x = N, y = P.death)) + 
+bartak.NegDD.plot <- ggplot(data = bartak.NegDD.dat, aes(x = N, y = P.death)) + 
         geom_point() +
         geom_line() +
         ylim(0,1) + 
@@ -83,7 +83,7 @@ bartak.allee.plot <- ggplot(data = bartak.allee.dat, aes(x = N, y = P.death)) +
         theme_classic() + 
         xlab("N") 
 
-bartak.allee.plot
+bartak.NegDD.plot
 ```
 
 ## PxAR 
@@ -102,7 +102,7 @@ deltas <- com.extinction(com,
                          beta = beta,
                          plot.res = FALSE)
 
-PxAR.allee <- ggplot(data = deltas, aes(x = A, y = P.x)) + 
+PxAR.NegDD <- ggplot(data = deltas, aes(x = A, y = P.x)) + 
         geom_point() +
         scale_x_continuous(trans='log10') +
         geom_smooth(method = lm, se = FALSE, colour = "black", size = 0.5) +
@@ -111,7 +111,7 @@ PxAR.allee <- ggplot(data = deltas, aes(x = A, y = P.x)) +
         xlab("A") +
         ylab("Px")
 
-PxAR.allee
+PxAR.NegDD
 ```
 
 ## Point pattern grids
@@ -146,30 +146,30 @@ lay.mat <- matrix(c(1,1,2,2,
                     3,4,5,6), 
                   nrow = 2, ncol=4, byrow=TRUE)
 
- grid.arrange(bartak.allee.plot, PxAR.allee,
+ grid.arrange(bartak.NegDD.plot, PxAR.NegDD,
              grids[[1]], grids[[2]], grids[[3]], grids[[4]],
              layout_matrix = lay.mat)
 
 pdf("Hypothesis_1.pdf", width = 7, height= 4.5)  
-    grid.arrange(bartak.allee.plot, PxAR.allee,
+    grid.arrange(bartak.NegDD.plot, PxAR.NegDD,
                grids[[1]], grids[[2]], grids[[3]], grids[[4]],
                layout_matrix = lay.mat)
 dev.off()
 ```
 
-# Hypothesis 2 - Janzen-Connell effect
+# Hypothesis 2 - PosDD effect
 
 ## Bartak function
 
 ```{r}
-# set parameters that correspond to the decreasing Bartak function (allee effect)
+# set parameters that correspond to the decreasing Bartak function (NegDD effect)
 alpha = 0.1
 beta = 1
 
-bartak.jc.dat <- data.frame(N = seq(1,40), 
+bartak.PosDD.dat <- data.frame(N = seq(1,40), 
                               P.death = effect.f(alpha, beta, N = seq(1,40), plot=FALSE))
 
-bartak.jc.plot <- ggplot(data = bartak.jc.dat, aes(x = N, y = P.death)) + 
+bartak.PosDD.plot <- ggplot(data = bartak.PosDD.dat, aes(x = N, y = P.death)) + 
         geom_point() +
         geom_line() +
         ylim(0,1) + 
@@ -177,7 +177,7 @@ bartak.jc.plot <- ggplot(data = bartak.jc.dat, aes(x = N, y = P.death)) +
         theme_classic() + 
         xlab("N") 
 
-bartak.jc.plot
+bartak.PosDD.plot
 ```
 
 ## PxAR 
@@ -196,7 +196,7 @@ deltas <- com.extinction(com,
                          beta = beta,
                          plot.res = FALSE)
 
-PxAR.jc <- ggplot(data = deltas, aes(x = A, y = P.x)) + 
+PxAR.PosDD <- ggplot(data = deltas, aes(x = A, y = P.x)) + 
         geom_point() +
         scale_x_continuous(trans='log10') +
         geom_smooth(method = lm, se = FALSE, colour = "black", size = 0.5) +
@@ -205,7 +205,7 @@ PxAR.jc <- ggplot(data = deltas, aes(x = A, y = P.x)) +
         xlab("A") +
         ylab("Px")
 
-PxAR.jc
+PxAR.PosDD
 ```
 
 ## Point pattern grids
@@ -242,12 +242,12 @@ lay.mat <- matrix(c(1,1,2,2,
                     3,4,5,6), 
                   nrow = 2, ncol=4, byrow=TRUE)
 
-grid.arrange(bartak.jc.plot, PxAR.jc,
+grid.arrange(bartak.PosDD.plot, PxAR.PosDD,
              grids[[1]], grids[[2]], grids[[3]], grids[[4]],
              layout_matrix = lay.mat)
 
 pdf("Hypothesis_2.pdf", width = 7, height= 4.5)  
-  grid.arrange(bartak.jc.plot, PxAR.jc,
+  grid.arrange(bartak.PosDD.plot, PxAR.PosDD,
                grids[[1]], grids[[2]], grids[[3]], grids[[4]],
                layout_matrix = lay.mat)
 dev.off()
