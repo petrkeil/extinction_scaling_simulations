@@ -22,11 +22,11 @@ We haven't tried on Mac OS.
 rm(list=ls())
 rm(list=ls())
 
-require(deSolve) # for solving ODEs 
-require(viridis)
-require(tidyverse)
-require(gridExtra)
-require(randomForest)
+library(deSolve) # for solving ODEs 
+library(viridis)
+library(tidyverse)
+library(gridExtra)
+library(randomForest)
 
 system("R CMD SHLIB LVmod_metacom_log.c") # compile C code (needs Rtools)
 source("LV_misc_functions.R")
@@ -298,8 +298,8 @@ res <- as.data.frame(do.call("rbind", results))
 res <- data.table::rbindlist(results)
 
 # re-classify d_z to individual hypotheses
-res$type[res$d_z < 2] <- "Allee"
-res$type[res$d_z > 2] <- "Janzen-Connell"
+res$type[res$d_z < 2] <- "Negative DD"
+res$type[res$d_z > 2] <- "Positive DD"
 res$type[res$d_z == 2] <- "Constant death"
 
 # save simulation results to a file

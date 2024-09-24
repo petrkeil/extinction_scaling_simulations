@@ -96,8 +96,8 @@ stopCluster(cl)
 
 # classify results to the three types of N-P.death dependency
 res <- data.frame(results, type = "")
-res$type[res$beta < 0] <- "Allee"
-res$type[res$beta > 0] <- "Janzen-Connell"
+res$type[res$beta < 0] <- "Negative DD"
+res$type[res$beta > 0] <- "Positive DD"
 res$type[res$beta == 0] <- "Constant death"
 ```
 

@@ -26,6 +26,7 @@ illustrates the three main hypotheses.
 library(mobsim) # simulating point pattern communities
 
 # graphics
+library(rlang)
 library(tidyverse)
 library(gridExtra) # multiple ggplots in a figure
 library(latex2exp) # for math symbols in figures
@@ -33,8 +34,7 @@ library(latex2exp) # for math symbols in figures
 # our own functions
 source("1_point_pattern_functions.r")
 
-# setting the random seed
-set.seed(1234)
+
 ```
 
 # Initial parameters 
@@ -48,6 +48,9 @@ S = 10  # number of species
 cv.abund = 1 # parameter of the SAD
 sigma = 0.1 # spatial aggregation parameter
 side.divisions = c(2,4,8,16) # four grid resolutions
+
+# setting the random seed
+set.seed(2000)
 
 # create the point pattern of the community
   com <- sim_thomas_community(n_sim  = N,
@@ -93,6 +96,7 @@ bartak.NegDD.plot
 P.minus.vect <- effect.f(alpha, beta, N = census$N.tot, plot = FALSE)
 
 # sample individuals that will be killed
+set.seed(2000)
 deaths <- rbinom(n = length(P.minus.vect), size = 1, prob = P.minus.vect)
 dead.coords <- com$census[deaths == 1, ]
 
