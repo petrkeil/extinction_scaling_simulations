@@ -2,7 +2,9 @@
 
 ## Authors
 
-*Petr Keil, Vojtech Bartak, Francois Leroy* - Department of Spatial Sciences, Faculty of Environmental Sciences, Czech University of Life Sciences Prague, Kamýcká 129, 16500 Praha-Suchdol, Czech Republic
+*Petr Keil, Vojtech Bartak, Francois Leroy* - Department of Spatial Sciences, Faculty of Environmental Sciences, Czech University of Life Sciences Prague, Kamycka 129, 16500 Praha-Suchdol, Czech Republic
+
+*Francois Leroy* - Department of Evolution, Ecology and Organismal Biology, The Ohio State University, Columbus, Ohio, 43210, USA
 
 *Adam Clark* - Institute of Biology, University of Graz, Holteigasse 6, 8010 Graz, Austria
 

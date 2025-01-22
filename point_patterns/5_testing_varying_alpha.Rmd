@@ -60,16 +60,15 @@ SADs
 
 ```{r}
 ## set parameter values
-params <- expand.grid(alpha = c(0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99),
+params <- expand.grid(alpha = 0.5,
                       beta = c(-4, -1, -0.4, 0, 0.4, 1, 4),
                       N.tot = c(100, 1000) , 
                       S.frac = c(0.05, 0.1, 0.2), 
                       sigma = c(0.01, 0.1, 1),
-                      cv.abund = c(0.1, 1, 10))
+                      cv.abund = c(0.1, 1, 10),
+                      alpha.const = FALSE) # HERE WE RELAX THE CONSTANT ALPHA ASSUMPTION
 
-params <- data.frame(params, 
-                     S.tot = params$N.tot*params$S.frac,
-                     alpha.const = TRUE)
+params <- data.frame(params, S.tot = params$N.tot*params$S.frac)
 
 # fix random seed
 set.seed(12345)
@@ -106,15 +105,14 @@ res$type[res$beta == 0] <- "Constant death"
 Export simulation results to a file:
 
 ```{r, eval=TRUE}
-write.csv(res, file = "sim_results.csv", row.names=FALSE)
+write.csv(res, file = "sim_results_var_alpha.csv", row.names=FALSE)
 ```
 
 # Main plot of the beta-slope hypothesis
 
 ```{r}
-res <- read.csv("sim_results.csv")
+res <- read.csv("sim_results_var_alpha.csv")
 res$cv.abund <- paste("CV[N]==", res$cv.abund, sep="")
-res$alpha <- paste("alpha==", res$alpha, sep="")
 
 slope.vs.beta.E <- ggplot(data = res, aes(x = as.factor(beta), y = slope.E)) +
   #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
@@ -129,18 +127,6 @@ slope.vs.beta.E <- ggplot(data = res, aes(x = as.factor(beta), y = slope.E)) +
   theme(legend.position = "none")
 slope.vs.beta.E
 
-slope.vs.beta.vs.alpha.E <- ggplot(data = res, aes(x = as.factor(beta), y = slope.E)) +
-  #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
-  geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "black") +
-  geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
-  facet_grid(as.factor(cv.abund)~as.factor(alpha), labeller = label_parsed) + 
-  theme_bw() +
-  ylim(c(-1.2,1.2)) +
-  xlab(expression(beta)) +
-  ylab("ExAR slope") + 
-  theme(legend.position = c(0.93, 0.08))
-slope.vs.beta.vs.alpha.E
-
 slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
   geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "grey") +
@@ -152,17 +138,6 @@ slope.vs.beta.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   labs(title="(a)") +
   theme(legend.position = c(0.1, 0.8))
 slope.vs.beta.P
-
-slope.vs.beta.vs.alpha.P <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
-  #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
-  geom_abline(intercept=0, slope = 0, linetype = "dashed", colour = "black") +
-  geom_boxplot(aes(fill = type), outlier.colour = "grey", outlier.shape = 1) +
-  facet_grid(as.factor(cv.abund)~as.factor(alpha), labeller = label_parsed) + 
-  theme_bw() +
-  xlab(expression(beta)) +
-  ylab("PxAR slope") + 
-  theme(legend.position = c(0.93, 0.08))
-slope.vs.beta.vs.alpha.P
 
 slope.simple <- ggplot(data = res, aes(x = as.factor(beta), y = slope.P)) +
   #geom_vline(xintercept=as.factor(0), linetype = "dashed", colour = "grey") +
@@ -182,20 +157,8 @@ Plot all of the results together
 grid.arrange( slope.vs.beta.P, slope.vs.beta.E, SADs, nrow = 3, heights=c(0.4, 0.7, 0.7))
 
 ## Export figure for the paper
-pdf("Figure_beta_vs_scaling.pdf", width = 8, height=11)
+pdf("Figure_beta_vs_scaling_var_alpha.pdf", width = 8, height=11)
   grid.arrange( slope.vs.beta.P, slope.vs.beta.E, SADs, nrow = 3, heights=c(0.7, 0.7, 0.4))
-dev.off()
-```
-
-Plot the interaction plots between alpha and beta
-
-```{r}
-pdf("Alpha_beta_interaction_PxAR.pdf", width = 14, height=10)
-   slope.vs.beta.vs.alpha.P
-dev.off()
-
-pdf("Alpha_beta_interaction_ExAR.pdf", width = 14, height=10)
-   slope.vs.beta.vs.alpha.E
 dev.off()
 ```
 
@@ -268,7 +231,7 @@ rf.imp.E
 Export all importance figures to a file
 
 ```{r}
-pdf("Figure_rf.pdf", width = 8, height = 4)
+pdf("Figure_rf_var_alpha.pdf", width = 8, height = 4)
 grid.arrange(rf.imp.P, rf.imp.E, nrow = 1, ncol = 2)
 dev.off()
 ```

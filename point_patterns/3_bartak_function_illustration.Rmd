@@ -58,9 +58,10 @@ P.death <- effect.f(alpha = 0.9, beta = -0.3)
 
 ```{r, fig.width=10}
 ## Set parameter values:
-
 params <- expand.grid(alpha = c(0.1, 0.3, 0.5, 0.7, 0.9),
-                      beta = c(-1, -0.4, -0.3, 0, 0.3, 0.4, 1))
+                      beta = c(-4, -1, -0.4, 0, 0.4, 1, 4))
+
+
 params <- data.frame(params, type = "")
 params$type[params$beta < 0] <- "(a) Negative density dependence"
 params$type[params$beta > 0] <- "(c) Positive density dependence"
@@ -89,6 +90,7 @@ p1 <- ggplot(data = params, aes(x = N, y= P.death)) +
               ylab(expression(P[death])) +
               theme_classic() +
               scale_colour_discrete(name = expression(beta)) +
+              scale_x_log10() +
               theme(legend.position = "right")
 p1
 

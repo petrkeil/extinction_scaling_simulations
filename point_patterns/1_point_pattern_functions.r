@@ -33,13 +33,17 @@ effect.f <- function(alpha=0.5, beta=0.5, N = seq(1,100), plot = TRUE)
   return(P)
 }
 
+# Test:
+# effect.f(alpha=0.5, beta=0.5, N = seq(1,100), plot = TRUE)
+
+
 # ------------------------------------------------------------------------------
 
 ## Create a lognormal SAD, given N, S, and coefficient of variation of abundance
 
 # Parameters:
 # N ... total number of individuals in the community
-# S ... titak number of species
+# S ... total number of species
 # cv_abund.vect ... vector of coefficients of variation of an SAD
 
 # Value: data frame with parameters of the SAD, 
@@ -74,6 +78,8 @@ SAD.prob.mass <- function(N, S, cv_abund.vect = c(0.1, 1, 10))
 # com ... community produced by the mobsim's sim_thomas_community function
 # side.divisions ... vector of grid resolutions, i.e. lengths of the side of a grid cell
 # alpha ... first parameters of Bartak's function
+# alpha.const ... is alpha given, or ignored and drawn from a uniform 
+#                 distribution between 0.01 and 0.99
 # beta ... second parameter of Bartak's function
 # plot.beta ... should the communities and extiction scaling be plotted?
 
@@ -84,6 +90,7 @@ SAD.prob.mass <- function(N, S, cv_abund.vect = c(0.1, 1, 10))
 com.extinction <- function(com, 
                            side.divisions,
                            alpha,
+                           alpha.const = TRUE,
                            beta,
                            plot.res = TRUE)
 {
@@ -91,14 +98,18 @@ com.extinction <- function(com,
   SAD <- data.frame(table(com$census$species))
   names(SAD) <- c("species", "N.tot")
   SAD$species <- as.character(SAD$species)
+  
+  if (alpha.const) { SAD$alpha <- alpha }
+  else { SAD$alpha <- runif(nrow(SAD), 0.01, 0.99) }
+  
   census <- left_join(com$census, SAD, by="species")
-  
-  # re-scale P.minus
-  P.minus.vect <- effect.f(alpha, beta, N = census$N.tot, plot = FALSE)
-  
+
+  # per-capita probability of death
+  P.minus.vect <- effect.f(alpha = census$alpha, beta, N = census$N.tot, plot = FALSE)
+
   # sample individuals that will be killed
   deaths <- rbinom(n = length(P.minus.vect), size = 1, prob = P.minus.vect)
-  
+ 
   # kill the individuals
   com2 <- com
   com2$census <- com2$census[deaths == 0, ]
@@ -132,6 +143,17 @@ com.extinction <- function(com,
   return(res)
 }
 
+# Testing:
+#com <- sim_thomas_community(n_sim  = 100,
+#                            s_pool = 10,
+#                            sad_coef = list(cv_abund = 1),
+#                            mother_points = 1,
+#                            sigma = 0.1)
+
+#com.extinction(com, 
+#               side.divisions = c(2,4,8,16), 
+#               beta = -0.4, alpha = 0.5,
+#               alpha.const = TRUE)
 
 # ------------------------------------------------------------------------------
 
@@ -242,7 +264,8 @@ main.loop <- function(params)
     # calculate "deltas" for the set of  grid resolutions and simulation 
     deltas <- com.extinction(com, 
                              side.divisions, 
-                             alpha = params$alpha[i], 
+                             alpha = params$alpha[i],
+                             alpha.const = params$alpha.const[i],
                              beta = params$beta[i],
                              plot.res = FALSE)
 
